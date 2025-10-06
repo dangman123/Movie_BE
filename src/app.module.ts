@@ -51,6 +51,8 @@ import { OrderConcession } from './modules/concessions/entities/order-concession
 import { MovieActor } from './modules/movies/entities/movie-actor.entity';
 import { MovieDirector } from './modules/movies/entities/movie-director.entity';
 import { MovieGenre } from './modules/movies/entities/movie-genre.entity';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './auth/passport/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -117,6 +119,6 @@ import { MovieGenre } from './modules/movies/entities/movie-genre.entity';
     UsersModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
 })
 export class AppModule {}

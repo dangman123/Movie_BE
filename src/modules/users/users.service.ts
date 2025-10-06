@@ -1,9 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { hashPasswordHelper } from 'src/common/helpers/util';
+import { CreateAuthDto } from 'src/auth/dto/create-auth.dto';
+import { v4 as uuidv4 } from 'uuid';
+import dayjs from 'dayjs';
 
 @Injectable()
 export class UsersService {
@@ -16,25 +24,50 @@ export class UsersService {
     return this.userRepository.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} user`;
-  }
-  async create(createUserDto: CreateUserDto) {
-    const { Username, Password, Email } = createUserDto;
-    const user = await this.userRepository.create({
-      Username,
-      Password,
-      Email,
+  IsEmailExist = async (email: string) => {
+    const user = await this.userRepository.exists({
+      where: { email },
     });
-    return {
-      id: user.UserID,
-    };
+    if (user) {
+      return true;
+    }
+    return false;
+  };
+  async findByEmail(email: string) {
+    return await this.userRepository.findOne({ where: { email } });
   }
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
-  }
+  async handleRegister(register: CreateAuthDto) {
+    try {
+      const { username, email, password } = register;
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+      const isExist = await this.IsEmailExist(email);
+      if (isExist) {
+        throw new BadRequestException(
+          `Email ${email} đã tồn tại. Vui lòng sử dụng email khác.`,
+        );
+      }
+
+      const hashedPassword = await hashPasswordHelper(password);
+      const verificationCode = uuidv4();
+
+      const user = this.userRepository.create({
+        username,
+        email,
+        password: hashedPassword,
+        isActive: false,
+      });
+
+      const savedUser = await this.userRepository.save(user);
+      return {
+        userID: savedUser.userID,
+        message:
+          'Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.',
+      };
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new InternalServerErrorException(
+        'Có lỗi xảy ra khi đăng ký tài khoản.',
+      );
+    }
   }
 }

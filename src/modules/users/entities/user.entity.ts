@@ -15,43 +15,43 @@ import { SystemLog } from '../../system-logs/entities/system-log.entity';
 @Entity('Users')
 export class User {
   @PrimaryGeneratedColumn()
-  UserID: number;
+  userID: number;
 
   @Column({ length: 50, unique: true })
-  Username: string;
+  username: string;
 
   @Column({ length: 255 })
-  Password: string;
+  password: string;
 
   @Column({ type: 'nvarchar', length: 100 })
-  FullName: string;
+  fullName: string;
 
   @Column({ length: 100, unique: true })
-  Email: string;
+  email: string;
 
   @Column({ length: 20, nullable: true })
-  Phone: string;
+  phone: string;
 
   @Column({ type: 'date', nullable: true })
-  DateOfBirth: Date;
+  dateOfBirth: Date;
 
   @Column({ type: 'nvarchar', length: 255, nullable: true })
-  Address: string;
+  address: string;
 
   @Column({ length: 20, default: 'Standard' })
-  MembershipLevel: string;
+  membershipLevel: string;
 
   @Column({ default: 0 })
-  Points: number;
+  points: number;
 
   @CreateDateColumn()
-  RegistrationDate: Date;
+  registrationDate: Date;
 
   @Column({ type: 'datetime', nullable: true })
-  LastLogin: Date;
+  lastLogin: Date;
 
   @Column({ default: true })
-  IsActive: boolean;
+  isActive: boolean;
 
   @OneToMany(() => Order, (order) => order.user)
   orders: Order[];

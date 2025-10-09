@@ -51,6 +51,8 @@ import { OrderConcession } from './modules/concessions/entities/order-concession
 import { MovieActor } from './modules/movies/entities/movie-actor.entity';
 import { MovieDirector } from './modules/movies/entities/movie-director.entity';
 import { MovieGenre } from './modules/movies/entities/movie-genre.entity';
+import { BannerModule } from './modules/banner/banner.module';
+import { Banner } from './modules/banner/entities/banner.entity';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/passport/jwt-auth.guard';
 
@@ -91,8 +93,10 @@ import { JwtAuthGuard } from './auth/passport/jwt-auth.guard';
         SystemSetting,
         Ticket,
         User,
+        Banner,
       ],
-      synchronize: false,
+      synchronize: false, // Sử dụng migration thay vì auto-sync
+      migrationsRun: false, // Không tự động chạy migration khi start app
     }),
     AuthModule,
     OrdersModule,
@@ -117,6 +121,7 @@ import { JwtAuthGuard } from './auth/passport/jwt-auth.guard';
     SystemSettingsModule,
     TicketsModule,
     UsersModule,
+    BannerModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],

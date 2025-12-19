@@ -13,7 +13,7 @@ export class AuthService {
   async validateUser(username: string, pass: string): Promise<any> {
     const user = await this.usersService.findByEmail(username);
     if (!user) {
-      throw new UnauthorizedException('Usernamee or password không hợp lệ');
+      throw new UnauthorizedException('Username or password không hợp lệ');
     }
     const isValidPassword = await comparePasswordHelper(pass, user.password);
     if (!isValidPassword) {
@@ -29,7 +29,6 @@ export class AuthService {
     const userData = {
       userID: user.userID,
       email: user.email,
-      // Thêm các trường khác bạn muốn trả về
       fullName: user.fullName,
     };
     return {

@@ -19,7 +19,7 @@ import { JwtAuthGuard } from './passport/jwt-auth.guard';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-
+  @Public()
   @UseGuards(LocalAuthGuard)
   @Post('login')
   handleLogin(@Request() req) {

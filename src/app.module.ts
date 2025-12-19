@@ -55,10 +55,18 @@ import { BannerModule } from './modules/banner/banner.module';
 import { Banner } from './modules/banner/entities/banner.entity';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/passport/jwt-auth.guard';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // Cấu hình Rate Limiting Global
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // Time window: 60 giây (1 phút)
+        limit: 100, // Số lần request tối đa trong 1 phút (mặc định)
+      },
+    ]),
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: 'localhost',
@@ -124,6 +132,11 @@ import { JwtAuthGuard } from './auth/passport/jwt-auth.guard';
     BannerModule,
   ],
   controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    // Áp dụng rate limiting global cho tất cả routes
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

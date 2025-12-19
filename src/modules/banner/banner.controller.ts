@@ -10,10 +10,15 @@ import {
   ParseIntPipe,
   HttpException,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
+  UploadedFiles,
 } from '@nestjs/common';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { BannerService } from './banner.service';
 import { BannerDto } from './dto/banner.dto';
 import { Public } from 'src/common/decorators/customize';
+import { successListResponse, errorResponse } from 'src/common/helpers/api-response.helper';
 
 @Controller('banners')
 export class BannerController {
@@ -24,191 +29,70 @@ export class BannerController {
   async getAllBanners() {
     try {
       const banners = await this.bannerService.getActiveBanners();
-      return {
-        success: true,
-        data: banners,
-        meta: {
-          total: banners.length,
-          lastUpdated: new Date(),
-        },
-      };
+      return successListResponse(banners, 'Banners fetched successfully');
     } catch (error) {
       throw new HttpException(
-        'Failed to fetch banners',
+        errorResponse('Failed to fetch banners', 'FETCH_ERROR', error.message),
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   /**
-   * Lấy banner theo loại
-   * GET /banner/banners/movie
-   * GET /banner/banners/promotion
+   * Upload một ảnh banner
+   * POST /banners/upload
+   * Body: FormData với field 'image'
    */
-  @Public()
-  @Get('banners/:type')
-  async getBannersByType(@Param('type') type: string) {
-    const validTypes = ['movie', 'promotion', 'event'];
-    
-    if (!validTypes.includes(type)) {
-      throw new HttpException(
-        `Invalid banner type. Valid types: ${validTypes.join(', ')}`,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
+  @Post('upload')
+  @UseInterceptors(FileInterceptor('image'))
+  async uploadBannerImage(@UploadedFile() file: Express.Multer.File) {
     try {
-      const banners = await this.bannerService.getBannersByType(type);
+      if (!file) {
+        throw new HttpException(
+          errorResponse('No image file provided', 'UPLOAD_ERROR'),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const imageUrl = await this.bannerService.uploadBannerImage(file);
       return {
         success: true,
-        data: banners,
-        meta: {
-          type,
-          total: banners.length,
-        },
+        message: 'Image uploaded successfully',
+        data: { imageUrl },
       };
     } catch (error) {
       throw new HttpException(
-        'Failed to fetch banners by type',
+        errorResponse('Failed to upload image', 'UPLOAD_ERROR', error.message),
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   /**
-   * Lấy banner phim đang chiếu
-   * GET /banner/movies
+   * Upload nhiều ảnh banner
+   * POST /banners/upload-multiple
+   * Body: FormData với field 'images' (array)
    */
-  @Public()
-  @Get('movies')
-  async getMovieBanners() {
+  @Post('upload-multiple')
+  @UseInterceptors(FilesInterceptor('images', 10)) // Tối đa 10 ảnh
+  async uploadMultipleBannerImages(@UploadedFiles() files: Express.Multer.File[]) {
     try {
-      const banners = await this.bannerService.getMovieBanners();
+      if (!files || files.length === 0) {
+        throw new HttpException(
+          errorResponse('No image files provided', 'UPLOAD_ERROR'),
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const imageUrls = await this.bannerService.uploadMultipleBannerImages(files);
       return {
         success: true,
-        data: banners,
-        meta: {
-          type: 'movie',
-          total: banners.length,
-        },
+        message: 'Images uploaded successfully',
+        data: { imageUrls },
       };
     } catch (error) {
       throw new HttpException(
-        'Failed to fetch movie banners',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  /**
-   * Lấy banner khuyến mãi
-   * GET /banner/promotions
-   */
-  @Public()
-  @Get('promotions')
-  async getPromotionBanners() {
-    try {
-      const banners = await this.bannerService.getPromotionBanners();
-      return {
-        success: true,
-        data: banners,
-        meta: {
-          type: 'promotion',
-          total: banners.length,
-        },
-      };
-    } catch (error) {
-      throw new HttpException(
-        'Failed to fetch promotion banners',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  /**
-   * Lấy banner cho mobile
-   * GET /banner/mobile
-   */
-  @Public()
-  @Get('mobile')
-  async getMobileBanners() {
-    try {
-      const banners = await this.bannerService.getMobileBanners();
-      return {
-        success: true,
-        data: banners,
-        meta: {
-          platform: 'mobile',
-          total: banners.length,
-        },
-      };
-    } catch (error) {
-      throw new HttpException(
-        'Failed to fetch mobile banners',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  // ========== ADMIN ENDPOINTS ==========
-
-  /**
-   * Tạo banner mới (Admin only)
-   */
-  // @Post('banners')
-  // async createBanner(@Body() bannerData: BannerDto) {
-  //   try {
-  //     const banner = await this.bannerService.createBanner(bannerData);
-  //     return {
-  //       success: true,
-  //       data: banner,
-  //       message: 'Banner created successfully',
-  //     };
-  //   } catch (error) {
-  //     throw new HttpException(
-  //       'Failed to create banner',
-  //       HttpStatus.INTERNAL_SERVER_ERROR,
-  //     );
-  //   }
-  // }
-
-  /**
-   * Cập nhật banner (Admin only)
-   */
-  @Patch('banners/:id')
-  async updateBanner(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() bannerData: Partial<BannerDto>,
-  ) {
-    try {
-      const banner = await this.bannerService.updateBanner(id, bannerData);
-      return {
-        success: true,
-        data: banner,
-        message: 'Banner updated successfully',
-      };
-    } catch (error) {
-      throw new HttpException(
-        'Failed to update banner',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  /**
-   * Xóa banner (Admin only)
-   */
-  @Delete('banners/:id')
-  async deleteBanner(@Param('id', ParseIntPipe) id: number) {
-    try {
-      await this.bannerService.deleteBanner(id);
-      return {
-        success: true,
-        message: 'Banner deleted successfully',
-      };
-    } catch (error) {
-      throw new HttpException(
-        'Failed to delete banner',
+        errorResponse('Failed to upload images', 'UPLOAD_ERROR', error.message),
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

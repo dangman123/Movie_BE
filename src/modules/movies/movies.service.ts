@@ -1,33 +1,81 @@
-import { Injectable, Move } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
-import { InjectRepository } from '@nestjs/typeorm';
+import { MoviesRepository } from './movies.repository';
 import { Movie } from './entities/movie.entity';
-import { Repository } from 'typeorm';
 
 @Injectable()
 export class MoviesService {
-  constructor(
-    @InjectRepository(Movie)
-    private movieRepository: Repository<Movie>,
-  ) {}
-  create(createMovieDto: CreateMovieDto) {
-    return 'This action adds a new movie';
+  constructor(private readonly moviesRepository: MoviesRepository) {}
+
+  /**
+   * BUSINESS LOGIC: Lấy danh sách phim đang chiếu
+   * - Validate và filter chỉ phim active
+   * - Transform data nếu cần
+   */
+  private getDateAtMidnight(dateInput: Date | string | null): Date {
+    if (!dateInput) {
+      // Nếu không có input, trả về ngày hôm nay
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return today;
+    }
+
+    const d =
+      typeof dateInput === 'string'
+        ? new Date(dateInput + 'T00:00:00')
+        : new Date(dateInput);
+
+    d.setHours(0, 0, 0, 0);
+    return d;
   }
 
-  async findAll() {
-    return await this.movieRepository.find();
+  async findMoviesShowing(): Promise<Movie[]> {
+    try {
+      const movies = await this.moviesRepository.findMoviesShowing();
+      const today = this.getDateAtMidnight(new Date()); // Luôn trả về Date, không null
+
+      const validMovies = movies.filter((movie) => {
+        const releaseDate = this.getDateAtMidnight(movie.ReleaseDate);
+
+        return movie.IsActive && releaseDate !== null && releaseDate <= today;
+      });
+
+      return validMovies;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Không thể lấy danh sách phim đang chiếu',
+      );
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} movie`;
-  }
+  async findMoviesComingSoon(): Promise<Movie[]> {
+    try {
+      const movies = await this.moviesRepository.findMoviesComingSoon();
+      const today = this.getDateAtMidnight(new Date()); // Luôn trả về Date, không null
 
-  update(id: number, updateMovieDto: UpdateMovieDto) {
-    return `This action updates a #${id} movie`;
-  }
+      const upcomingMovies = movies
+        .filter((movie) => {
+          const releaseDate = this.getDateAtMidnight(movie.ReleaseDate);
 
-  remove(id: number) {
-    return `This action removes a #${id} movie`;
+          return movie.IsActive && releaseDate !== null && releaseDate > today;
+        })
+        .sort((a, b) => {
+          const dateA = this.getDateAtMidnight(a.ReleaseDate)?.getTime() || 0;
+          const dateB = this.getDateAtMidnight(b.ReleaseDate)?.getTime() || 0;
+          return dateA - dateB;
+        });
+
+      return upcomingMovies;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Không thể lấy danh sách phim sắp chiếu',
+      );
+    }
   }
 }

@@ -31,7 +31,7 @@ export class MoviesController {
   async findMoviesShowing() {
     try {
       const movies = await this.moviesService.findMoviesShowing();
-      return successListResponse(movies, 'Movies showing fetched successfully');
+      return successListResponse(movies);
     } catch (error) {
       throw new HttpException(
         errorResponse('Failed to fetch Movies', 'FETCH_ERROR', error.message),
@@ -42,13 +42,12 @@ export class MoviesController {
 
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   @Public()
-  @Get('coming-soon')
+  @Get('comming')
   async findMoviesComingSoon() {
     try {
       const movies = await this.moviesService.findMoviesComingSoon();
       return successListResponse(
-        movies,
-        'Movies coming soon fetched successfully',
+        movies
       );
     } catch (error) {
       throw new HttpException(
@@ -59,17 +58,30 @@ export class MoviesController {
   }
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   @Public()
-  @Get('IMAX')
+  @Get('movie-imax')
   async findMoviesIMAX() {
     try {
-      const movies = await this.moviesService.findMoviesComingSoon();
+      const movies = await this.moviesService.findMoviesImax(); 
       return successListResponse(
-        movies,
-        'Movies coming soon fetched successfully',
+        movies
       );
     } catch (error) {
       throw new HttpException(
         errorResponse('Failed to fetch Movies', 'FETCH_ERROR', error.message),
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @Public()
+  @Get(':slug')
+  async findMoviesBySlug(@Param('slug') slug: string) {
+    try {
+      const movie = await this.moviesService.findMoviesBySlug(slug);
+      return successResponse(movie);
+    } catch (error) {
+      throw new HttpException(
+        errorResponse('Failed to fetch Movie', 'FETCH_ERROR', error.message),
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

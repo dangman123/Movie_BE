@@ -16,33 +16,105 @@ export class MoviesRepository {
    * Tìm tất cả phim đang chiếu
    */
   async findMoviesShowing(): Promise<Movie[]> {
-    return this.movieRepository.find({
+    return await this.movieRepository.find({
       where: { Status: 'NowShowing' },
     });
   }
 
   /**
    * Tìm tất cả phim sắp chiếu
+   * Sắp xếp theo createdAt (mới nhất trước)
    */
   async findMoviesComingSoon(): Promise<Movie[]> {
-    return this.movieRepository.find({
+    return await this.movieRepository.find({
       where: { Status: 'Upcoming' },
+      order: { createdAt: 'DESC' }, 
     });
   }
   async findMoviesImax(): Promise<Movie[]> {
-    return this.movieRepository.find({
-      where: { Status: 'Imax' },
+    return await this.movieRepository.find({
+      where: { IsIMAX: true },
     });
   }
   /**
    * Tìm phim theo ID
    */
   async findById(movieId: number): Promise<Movie | null> {
-    return this.movieRepository.findOne({
+    return await this.movieRepository.findOne({
       where: { MovieID: movieId },
     });
   }
+  async findMoviesBySlug(slug: string) {
+    const qb = this.movieRepository
+      .createQueryBuilder('m')
+      .leftJoin('m.studio', 's')
+      .leftJoin('m.reviews', 'r', 'r.IsApproved = 1')
+      .select('m.MovieID', 'MovieID')
+      .addSelect('m.Title', 'Title')
+      .addSelect('m.OriginalTitle', 'OriginalTitle')
+      .addSelect('m.Duration', 'Duration')
+      .addSelect('m.Rating', 'Rating')
+      .addSelect('m.Synopsis', 'Synopsis')
+      .addSelect('m.TrailerURL', 'TrailerURL')
+      .addSelect('m.slug', 'slug')
+      .addSelect('m.PosterURL', 'PosterURL')
+      .addSelect('m.ReleaseDate', 'ReleaseDate')
+      .addSelect('s.StudioName', 'StudioName')
+      .addSelect(
+        `
+        (
+          SELECT GROUP_CONCAT(a.ActorName SEPARATOR ',')
+          FROM Movie_Actors ma
+          JOIN Actors a ON a.ActorID = ma.ActorID
+          WHERE ma.MovieID = m.MovieID
+        )
+      `,
+        'actorNames',
+      )
+      .addSelect(
+        `
+        (
+          SELECT GROUP_CONCAT(d.DirectorName SEPARATOR ',')
+          FROM Movie_Directors md
+          JOIN Directors d ON d.DirectorID = md.DirectorID
+          WHERE md.MovieID = m.MovieID
+        )
+      `,
+        'directorNames',
+      )
+      .addSelect('AVG(r.Rating)', 'averageRating')
+      .where('m.slug = :slug', { slug })
+      .andWhere('m.IsActive = :active', { active: true })
+      .groupBy('m.MovieID')
+      .addGroupBy('s.StudioID');
 
+    const raw = await qb.getRawOne();
+    if (!raw) {
+      return null;
+    }
+
+    const toArray = (val?: string | null) =>
+      val && typeof val === 'string'
+        ? val.split(',').map((v) => v.trim()).filter(Boolean)
+        : [];
+
+    return {
+      MovieID: raw.MovieID,
+      Title: raw.Title,
+      OriginalTitle: raw.OriginalTitle,
+      Duration: raw.Duration,
+      Rating: raw.Rating,
+      Synopsis: raw.Synopsis,
+      TrailerURL: raw.TrailerURL,
+      slug: raw.slug,
+      PosterURL: raw.PosterURL,
+      ReleaseDate: raw.ReleaseDate,
+      StudioName: raw.StudioName,
+      averageRating: parseFloat(raw.averageRating ?? '0'),
+      actorNames: toArray(raw.actorNames),
+      directorNames: toArray(raw.directorNames),
+    };
+  }
   /**
    * VÍ DỤ 1: Truy vấn phức tạp với Query Builder
    * Lấy phim đang chiếu với đầy đủ thông tin:

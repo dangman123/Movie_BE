@@ -43,13 +43,11 @@ export function successResponse<T>(
  */
 export function successListResponse<T>(
   data: T[],
-  message?: string,
   meta?: any
 ): ApiResponse<T[]> {
   return {
     success: true,
     data,
-    message,
     meta: {
       total: data.length,
       lastUpdated: new Date(),

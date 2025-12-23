@@ -8,16 +8,12 @@ import { CreateMovieDto } from './dto/create-movie.dto';
 import { UpdateMovieDto } from './dto/update-movie.dto';
 import { MoviesRepository } from './movies.repository';
 import { Movie } from './entities/movie.entity';
+import { generateSlug } from '../../common/helpers/slug.helper';
 
 @Injectable()
 export class MoviesService {
   constructor(private readonly moviesRepository: MoviesRepository) {}
 
-  /**
-   * BUSINESS LOGIC: Lấy danh sách phim đang chiếu
-   * - Validate và filter chỉ phim active
-   * - Transform data nếu cần
-   */
   private getDateAtMidnight(dateInput: Date | string | null): Date {
     if (!dateInput) {
       // Nếu không có input, trả về ngày hôm nay
@@ -53,7 +49,17 @@ export class MoviesService {
       );
     }
   }
-
+  async findMoviesImax(): Promise<Movie[]> {
+    try {
+      const movies = await this.moviesRepository.findMoviesImax();
+      const validMovies = movies.filter((movie) => movie.IsActive);
+      return validMovies;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Không thể lấy danh sách phim IMAX',
+      );
+    }
+  }
   async findMoviesComingSoon(): Promise<Movie[]> {
     try {
       const movies = await this.moviesRepository.findMoviesComingSoon();
@@ -75,6 +81,16 @@ export class MoviesService {
     } catch (error) {
       throw new InternalServerErrorException(
         'Không thể lấy danh sách phim sắp chiếu',
+      );
+    }
+  }
+  async findMoviesBySlug(slug: string) { 
+    try {
+      const movie = await this.moviesRepository.findMoviesBySlug(slug);
+      return movie;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Không thể lấy thông tin phim',
       );
     }
   }

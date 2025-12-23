@@ -24,6 +24,9 @@ export class Movie {
   @Column({ type: 'nvarchar', length: 255, nullable: true })
   OriginalTitle: string;
 
+  @Column({ type: 'varchar', length: 255, unique: true })
+  slug: string;
+
   @Column({ type: 'nvarchar', length: 2000 })
   Synopsis: string;
 
@@ -51,11 +54,17 @@ export class Movie {
   @Column({ nullable: true })
   StudioID: number;
 
-  @Column({ length: 20, default: 'Upcoming' })
+  @Column({ length: 20, default: 'Showing' })
   Status: string; // Upcoming, NowShowing, Ended
 
   @Column({ default: true })
   IsActive: boolean;
+
+  @Column({ default: false })
+  IsIMAX: boolean;
+
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
+  createdAt: Date;
 
   @ManyToOne(() => Studio, (studio) => studio.movies)
   @JoinColumn({ name: 'StudioID' })
